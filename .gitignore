@@ -1,0 +1,17 @@
+# dependencies & build output
+node_modules/
+release/
+dist/
+native/*.exe
+*.log
+
+# local data / editors
+.vscode/
+.idea/
+*.tmp
+Thumbs.db
+desktop.ini
+
+# local-only files of the GitHub kit (installers for manual upload, personal notes)
+release-files/
+START-HERE*.md

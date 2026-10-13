@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="fa" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DriveHound</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles-ext.css">
+</head>
+<body>
+  <div class="bg-fx" aria-hidden="true"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="grid-fx"></div></div>
+
+  <header class="titlebar">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 32 32" width="26" height="26"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><circle cx="16" cy="16" r="12" fill="none" stroke="url(#lg)" stroke-width="4.5" stroke-dasharray="56 20" stroke-linecap="round" transform="rotate(-50 16 16)"/><circle cx="16" cy="16" r="3.6" fill="#fff"/></svg></div>
+      <div class="brand-text"><b data-i18n="appName"></b><span data-i18n="appTag"></span></div>
+    </div>
+    <div class="title-center" id="titleDrive"></div>
+    <div class="title-actions">
+      <button class="admin-pill" id="adminPill"></button>
+    </div>
+  </header>
+
+  <div class="shell">
+    <nav class="sidebar" id="sidebar">
+      <div class="nav-scroll">
+      <div class="nav-sec" data-i18n="sec_analyze"></div>
+      <button class="nav-item active" data-view="dashboard"><span class="nav-ic" data-icon="dashboard"></span><span data-i18n="nav_dashboard"></span></button>
+      <button class="nav-item" data-view="explorer"><span class="nav-ic" data-icon="folderTree"></span><span data-i18n="nav_explorer"></span></button>
+      <button class="nav-item" data-view="files"><span class="nav-ic" data-icon="files"></span><span data-i18n="nav_files"></span></button>
+      <button class="nav-item" data-view="changes"><span class="nav-ic" data-icon="trendUp"></span><span data-i18n="nav_changes"></span><i class="nav-badge" id="badgeChanges" hidden></i></button>
+      <div class="nav-sec" data-i18n="sec_clean"></div>
+      <button class="nav-item" data-view="cleanup"><span class="nav-ic" data-icon="sparkles"></span><span data-i18n="nav_cleanup"></span><i class="nav-badge safe" id="badgeCleanup" hidden></i></button>
+      <button class="nav-item" data-view="dupes"><span class="nav-ic" data-icon="copies"></span><span data-i18n="nav_dupes"></span></button>
+      <button class="nav-item" data-view="containers"><span class="nav-ic" data-icon="box"></span><span data-i18n="nav_containers"></span></button>
+      <button class="nav-item" data-view="system"><span class="nav-ic" data-icon="wrench"></span><span data-i18n="nav_system"></span></button>
+      <div class="nav-sec" data-i18n="sec_optimize"></div>
+      <button class="nav-item" data-view="move"><span class="nav-ic" data-icon="move"></span><span data-i18n="nav_move"></span></button>
+      <div class="nav-sec" data-i18n="sec_manage"></div>
+      <button class="nav-item" data-view="apps"><span class="nav-ic" data-icon="grid"></span><span data-i18n="nav_apps"></span></button>
+      <button class="nav-item" data-view="history"><span class="nav-ic" data-icon="history"></span><span data-i18n="nav_history"></span><i class="nav-badge" id="badgeQuarantine" hidden></i></button>
+      </div>
+      <div class="nav-spacer"></div>
+      <div class="side-drive" id="sideDrive"></div>
+      <div class="side-toggles">
+        <button class="chip-btn" id="langToggle" title="Language"><span data-icon="globe"></span><b id="langLabel"></b></button>
+        <button class="chip-btn" id="themeToggle" title="Theme"><span id="themeIcon"></span></button>
+        <button class="chip-btn" data-view="settings" id="settingsBtn"><span data-icon="gear"></span></button>
+      </div>
+    </nav>
+
+    <main class="main" id="main">
+      <section class="view active" id="view-dashboard"></section>
+      <section class="view" id="view-explorer"></section>
+      <section class="view" id="view-files"></section>
+      <section class="view" id="view-changes"></section>
+      <section class="view" id="view-cleanup"></section>
+      <section class="view" id="view-apps"></section>
+      <section class="view" id="view-dupes"></section>
+      <section class="view" id="view-containers"></section>
+      <section class="view" id="view-system"></section>
+      <section class="view" id="view-move"></section>
+      <section class="view" id="view-history"></section>
+      <section class="view" id="view-settings"></section>
+    </main>
+
+    <aside class="drawer" id="drawer" aria-hidden="true">
+      <div class="drawer-inner" id="drawerBody"></div>
+    </aside>
+  </div>
+
+  <div class="tooltip" id="tooltip" hidden></div>
+  <div class="modal-root" id="modalRoot" hidden></div>
+  <div class="toasts" id="toasts"></div>
+
+  <script src="../shared/knowledge.js"></script>
+  <script src="../shared/compare.js"></script>
+  <script src="i18n.js"></script>
+  <script src="icons.js"></script>
+  <script src="charts.js"></script>
+  <script src="filters.js"></script>
+  <script src="app.js"></script>
+  <script src="views-more.js"></script>
+  <script src="boot.js"></script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+{
+  "name": "drivehound",
+  "productName": "DriveHound",
+  "version": "2.1.0",
+  "description": "Smart disk space analyzer for Windows — find what fills your drive and know what is safe to delete.",
+  "main": "main.js",
+  "author": "Mwhmad",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test \"tests/*.test.js\"",
+    "test:e2e": "node tests/e2e/run.js",
+    "screenshots": "node scripts/screenshots.js",
+    "showcase": "electron scripts/render-showcase.js",
+    "banner": "electron scripts/render-banner.js",
+    "build:native": "node scripts/build-native.js",
+    "audit": "npm audit --omit=dev",
+    "dist": "npm run build:native && electron-builder --win nsis portable",
+    "dist:portable": "npm run build:native && electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.mwhmad.drivehound",
+    "productName": "DriveHound",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "core/**",
+      "scanner/**",
+      "shared/**",
+      "renderer/**",
+      "assets/**",
+      "!**/*.map"
+    ],
+    "win": {
+      "icon": "assets/icon.png",
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "DriveHound",
+      "include": "build/installer.nsh",
+      "artifactName": "DriveHound-Setup-${version}.exe",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "portable": {
+      "artifactName": "DriveHound-Portable-${version}.exe"
+    },
+    "extraResources": [
+      {
+        "from": "native/mftscan.exe",
+        "to": "native/mftscan.exe"
+      }
+    ],
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "grantFileProtocolExtraPrivileges": false
+    },
+    "asar": true
+  },
+  "devDependencies": {
+    "electron": "^44.6.0",
+    "electron-builder": "^26.15.3",
+    "vazirmatn": "^33.0.3"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "electron-updater": "^6.8.9"
+  },
+  "keywords": [
+    "windows",
+    "disk-space",
+    "disk-analyzer",
+    "storage",
+    "cleanup",
+    "electron",
+    "ntfs",
+    "mft",
+    "docker",
+    "wsl",
+    "persian",
+    "ai"
+  ]
+}
