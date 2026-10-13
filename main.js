@@ -399,8 +399,12 @@ function registerIpc() {
     const exe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
     const args = DEV ? [app.getAppPath()] : [];
     const argList = args.length ? ' -ArgumentList ' + args.map((a) => X.psQuote('"' + a + '"')).join(',') : '';
+    // The elevated copy starts while this one is still running: free the single-instance lock first,
+    // otherwise it finds us, hands over and exits, and then we quit too — leaving no window at all.
+    app.releaseSingleInstanceLock();
     const r = await X.ps(`try { Start-Process ${X.psQuote(exe)}${argList} -Verb RunAs; exit 0 } catch { exit 1223 }`, 30000);
     if (r.code === 0) { quitting = true; setTimeout(() => app.quit(), 300); }
+    else app.requestSingleInstanceLock();      // UAC cancelled: stay the single instance
     return r.code === 0;
   });
 

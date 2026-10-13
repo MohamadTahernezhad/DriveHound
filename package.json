@@ -1,7 +1,7 @@
 {
   "name": "drivehound",
   "productName": "DriveHound",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Smart disk space analyzer for Windows — find what fills your drive and know what is safe to delete.",
   "main": "main.js",
   "author": "Mwhmad",
@@ -70,7 +70,12 @@
       "onlyLoadAppFromAsar": true,
       "grantFileProtocolExtraPrivileges": false
     },
-    "asar": true
+    "asar": true,
+    "publish": {
+      "provider": "github",
+      "owner": "MohamadTahernezhad",
+      "repo": "DriveHound"
+    }
   },
   "devDependencies": {
     "electron": "^44.6.0",
@@ -94,5 +99,13 @@
     "wsl",
     "persian",
     "ai"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MohamadTahernezhad/DriveHound.git"
+  },
+  "homepage": "https://github.com/MohamadTahernezhad/DriveHound#readme",
+  "bugs": {
+    "url": "https://github.com/MohamadTahernezhad/DriveHound/issues"
+  }
 }

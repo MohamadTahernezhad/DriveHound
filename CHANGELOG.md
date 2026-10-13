@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.1 — 2026-10-13
+
+### Fixed
+- **"Run as admin" closed the app instead of reopening it.** The elevated copy found the running one through the single-instance lock and exited, then the running one quit too. The lock is now released before the elevated copy starts (and taken back if the UAC prompt is cancelled).
+
 ## 2.1.0 — 2026-10-11
 
 ### Added

@@ -118,7 +118,7 @@ powershell -ExecutionPolicy Bypass -File scripts\publish-github.ps1 -Release
 
 1. **About** (چرخ‌دنده‌ی کنار About در صفحه‌ی اصلی مخزن):
    - **Description:** `Smart disk space analyzer for Windows — see what fills your drive and what is safe to delete. فارسی / English`
-   - **Website:** لینک `https://github.com/USERNAME/drivehound/releases/latest`
+   - **Website:** لینک `https://github.com/USERNAME/DriveHound/releases/latest`
    - **Topics:** `windows` `disk-space` `disk-analyzer` `storage` `cleanup` `electron` `ntfs` `mft` `docker` `wsl` `persian` `ai`
    - تیک **Releases** را بزنید و تیک *Packages* و *Deployments* را بردارید.
 2. **Social preview** (تصویر هنگام اشتراک لینک): **Settings ← General ← Social preview ← Edit ← Upload an image** و فایل `docs/social-preview.png` را انتخاب کنید.

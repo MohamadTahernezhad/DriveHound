@@ -11,14 +11,14 @@
 
 [English](README.en.md) · [دانلود](#-دانلود-و-نصب) · [راهنمای استفاده](#-راهنمای-استفاده) · [ساخت از سورس](#-ساخت-از-سورس-برای-توسعه‌دهنده‌ها) · [امنیت](#-امنیت-و-حریم-خصوصی)
 
-[![CI](https://github.com/<your-username>/drivehound/actions/workflows/ci.yml/badge.svg)](https://github.com/<your-username>/drivehound/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/<your-username>/drivehound?color=7046f0)](https://github.com/<your-username>/drivehound/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/<your-username>/drivehound/total?color=0ea5c6)](https://github.com/<your-username>/drivehound/releases)
+[![CI](https://github.com/MohamadTahernezhad/DriveHound/actions/workflows/ci.yml/badge.svg)](https://github.com/MohamadTahernezhad/DriveHound/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/MohamadTahernezhad/DriveHound?color=7046f0)](https://github.com/MohamadTahernezhad/DriveHound/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/MohamadTahernezhad/DriveHound/total?color=0ea5c6)](https://github.com/MohamadTahernezhad/DriveHound/releases)
 ![Windows 10 | 11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![فارسی و انگلیسی](https://img.shields.io/badge/UI-Persian%20%7C%20English-0ea5c6)
 
-<a href="https://github.com/<your-username>/drivehound/releases/latest"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20for%20Windows-7046f0?style=for-the-badge" alt="دانلود"></a>
+<a href="https://github.com/MohamadTahernezhad/DriveHound/releases/latest"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20for%20Windows-7046f0?style=for-the-badge" alt="دانلود"></a>
 
 </div>
 
@@ -181,8 +181,8 @@
 
 ### اجرا در حالت توسعه
 ```bash
-git clone https://github.com/<your-username>/drivehound.git
-cd drivehound
+git clone https://github.com/MohamadTahernezhad/DriveHound.git
+cd DriveHound
 npm install
 npm run build:native      # ساخت ماژول توربو (native/mftscan.exe)
 npm start
@@ -231,8 +231,8 @@ npm run dist
 مخزن یک GitHub Action دارد که با هر تگ نسخه، تست‌ها را اجرا و فایل‌های نصبی را می‌سازد و به Release پیوست می‌کند:
 ```bash
 # نسخه را در package.json به‌روز کنید، سپس:
-git tag v2.1.0
-git push origin v2.1.0
+git tag v2.1.1
+git push origin v2.1.1
 ```
 
 ### فعال‌سازی به‌روزرسانی خودکار

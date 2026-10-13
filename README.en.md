@@ -11,14 +11,14 @@ and tells you whether deleting it is safe — without breaking Windows, your pro
 
 [فارسی](README.md) · [Download](#-download--install) · [Usage](#-usage) · [Build from source](#-build-from-source) · [Security](#-security--privacy)
 
-[![CI](https://github.com/<your-username>/drivehound/actions/workflows/ci.yml/badge.svg)](https://github.com/<your-username>/drivehound/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/<your-username>/drivehound?color=7046f0)](https://github.com/<your-username>/drivehound/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/<your-username>/drivehound/total?color=0ea5c6)](https://github.com/<your-username>/drivehound/releases)
+[![CI](https://github.com/MohamadTahernezhad/DriveHound/actions/workflows/ci.yml/badge.svg)](https://github.com/MohamadTahernezhad/DriveHound/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/MohamadTahernezhad/DriveHound?color=7046f0)](https://github.com/MohamadTahernezhad/DriveHound/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/MohamadTahernezhad/DriveHound/total?color=0ea5c6)](https://github.com/MohamadTahernezhad/DriveHound/releases)
 ![Windows 10 | 11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![UI](https://img.shields.io/badge/UI-English%20%7C%20Persian-0ea5c6)
 
-<a href="https://github.com/<your-username>/drivehound/releases/latest"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20for%20Windows-7046f0?style=for-the-badge" alt="Download"></a>
+<a href="https://github.com/MohamadTahernezhad/DriveHound/releases/latest"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20for%20Windows-7046f0?style=for-the-badge" alt="Download"></a>
 
 </div>
 
@@ -142,8 +142,8 @@ Details: [SECURITY.md](SECURITY.md)
 **Prerequisites:** Windows 10/11 x64, [Node.js](https://nodejs.org) **22+**, Git, .NET Framework 4.x (preinstalled on Windows; its built-in `csc.exe` compiles the Turbo module).
 
 ```bash
-git clone https://github.com/<your-username>/drivehound.git
-cd drivehound
+git clone https://github.com/MohamadTahernezhad/DriveHound.git
+cd DriveHound
 npm install
 npm run build:native      # builds native/mftscan.exe (Turbo scan)
 npm start
@@ -176,7 +176,7 @@ npm run banner       # docs/banner.png + docs/social-preview.png
 
 **Publish a release** — the included GitHub Action runs the tests, builds both executables and attaches them to a GitHub Release for every version tag:
 ```bash
-git tag v2.1.0 && git push origin v2.1.0
+git tag v2.1.1 && git push origin v2.1.1
 ```
 
 **Auto-update** — `node scripts/set-repo.js <github-user>` adds `build.publish` (and repository links) to `package.json`; installers built afterwards update themselves from your Releases.
