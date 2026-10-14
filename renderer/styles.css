@@ -188,8 +188,8 @@ hr.sep { border: 0; border-top: 1px solid var(--border); margin: 14px 0; }
 .icon-btn { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; border: 1px solid transparent; background: transparent; cursor: pointer; color: var(--text-2); }
 .icon-btn:hover { background: var(--hover); color: var(--text); border-color: var(--border); }
 
-.seg-ctl { display: inline-flex; padding: 3px; border-radius: 11px; background: var(--surface-2); border: 1px solid var(--border); gap: 2px; }
-.seg-ctl button { border: 0; background: transparent; padding: 5px 12px; border-radius: 8px; cursor: pointer; color: var(--text-2); font-size: 12px; font-weight: 600; }
+.seg-ctl { flex: none; display: inline-flex; padding: 3px; border-radius: 11px; background: var(--surface-2); border: 1px solid var(--border); gap: 2px; }
+.seg-ctl button { border: 0; background: transparent; padding: 5px 12px; border-radius: 8px; cursor: pointer; color: var(--text-2); font-size: 12px; font-weight: 600; white-space: nowrap; }
 .seg-ctl button.on { background: var(--surface-solid); color: var(--text); box-shadow: 0 2px 8px -3px rgba(0, 0, 0, 0.4); }
 
 .input { height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); padding: 0 12px; font: inherit; font-size: 13px; outline: none; min-width: 240px; }
@@ -198,6 +198,8 @@ hr.sep { border: 0; border-top: 1px solid var(--border); margin: 14px 0; }
 .search-box > .ic { position: absolute; inset-inline-start: 11px; color: var(--muted); }
 .search-box .input { padding-inline-start: 34px; }
 select.input { min-width: 0; cursor: pointer; }
+/* the native option list is painted on its own (light) base: translucent theme surfaces would leave light text on white */
+select option, select optgroup { background-color: var(--surface-solid); color: var(--text); }
 
 .bar { height: 6px; border-radius: 4px; background: var(--track); overflow: hidden; }
 .bar > i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); min-width: 2px; }

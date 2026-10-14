@@ -87,6 +87,16 @@
   await sleep(1500);
   ok('refresh: F5 reloads the current view', Array.isArray(state.hist.list) && state.hist.list !== fakeList);
 
+  // ── update dialog (simulated: dev builds have no release feed) ──
+  state.update.info = { current: '2.1.1', version: '9.9.9', notes: '<h2>New</h2><ul><li>Faster scan <img src=x onerror="window.__xss3=1"></li></ul>', configured: true };
+  state.update.phase = 'available';
+  renderChrome(); updateModal();
+  await sleep(400);
+  const updBox = document.querySelector('.modal[data-upd]');
+  ok('update: dialog lists release notes as text', !!updBox && /Faster scan/.test(updBox.textContent) && !updBox.querySelector('img') && window.__xss3 === undefined);
+  ok('update: titlebar pill shown', !document.querySelector('#updatePill').hidden);
+  closeModal(); state.update.phase = 'idle'; renderChrome();
+
   // ── filters ──
   if (state.result) {
     setView('files');

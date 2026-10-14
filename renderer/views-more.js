@@ -1,6 +1,6 @@
 'use strict';
 /* Additional views: duplicates, Docker & WSL, system tools, move/compress, history & quarantine, settings */
-/* global state, api, K, Filters, icon, esc, t, T, P, fmtNum, fmtBytes, fmtBytesShort, fmtPct, fmtAgo, fmtDate, badge, reg, getItem,
+/* global state, api, K, Filters, I18N, icon, esc, t, T, P, fmtNum, fmtBytes, fmtBytesShort, fmtPct, fmtAgo, fmtDate, badge, reg, getItem,
    baseName, dirName, lowerP, extOf, ptail, countBy, topValues, safetyOptions, cls, modal, closeModal, toast, opOverlay, errText,
    confirmDelete, runAction, saveSettings, renderView, VIEWS, RELOAD, existsAll, $, $$, SAFETY_ICON, rootOf, isDeleted, GROUPS, groupOf */
 
@@ -502,12 +502,157 @@ async function renderSettings() {
       <div class="card-head" style="margin:14px 0 6px"><h3 style="font-size:13.5px">${icon('eyeOff', 16)}${T('پنهان از پیشنهادها', 'Hidden from suggestions')}</h3></div>
       ${(s.hiddenPaths || []).map((p, i) => `<div class="rule-row" style="grid-template-columns:minmax(0,1fr) 32px">${ptail(p)}<button class="icon-btn xs" data-act="hide-del" data-i="${i}">${icon('x', 12)}</button></div>`).join('') || `<div class="muted" style="font-size:12.5px">—</div>`}</div>
     <div class="card" style="margin-bottom:16px"><div class="card-head"><h3>${icon('download', 18)}${T('به‌روزرسانی', 'Updates')}</h3><span class="muted num">v${esc(state.version)}</span></div>
-      <div class="set-row"><div><b>${T('بررسی نسخه جدید', 'Check for updates')}</b><span>${U.update ? esc(U.update) : T('آپدیت‌ها از مخزن رسمی انتشار دریافت و قبل از نصب با هش بررسی می‌شوند.', 'Updates come from the release feed and are hash-verified before install.')}</span></div><button class="btn ghost sm" data-act="upd-check">${icon('refresh', 13)}${T('بررسی', 'Check')}</button></div></div>
+      <div class="set-row"><div><b>${T('بررسی نسخه جدید', 'Check for updates')}</b><span id="setUpdTxt">${esc(updateStatusText())}</span></div>${updateSettingsButton()}</div></div>
     <div class="card"><div class="card-head"><h3>${icon('info', 18)}${t('safety_legend')}</h3></div><div class="legend-safety">
       ${[['safe', 'cl_safe_sub'], ['caution', 'cl_caution_sub'], ['user', 'cl_user_sub'], ['danger', 'verdict_app']].map(([k, d]) => `<div>${badge(k)}<p>${t(d)}</p></div>`).join('')}
       </div><hr class="sep"><p class="t2" style="margin:0;font-size:13px">${t('about_text')}</p></div>
     </div></div>`;
 }
+
+// ═════════════════════════ updates ═════════════════════════
+// phase: idle | checking | none | available | downloading | ready | error | unsupported
+state.update = { phase: 'idle', info: null, progress: null, error: null, checkedAt: 0 };
+const UPD_ACTIVE = ['available', 'downloading', 'ready'];
+const hasFa = (s) => /[؀-ۿ]/.test(s);
+
+// The release body comes from GitHub as HTML: read it in an inert document and keep only headings and list items, as text.
+function updateNotes(html) {
+  if (!html) return [];
+  const doc = new DOMParser().parseFromString(String(html), 'text/html');
+  const sections = [];
+  let cur = null;
+  for (const el of doc.body.querySelectorAll('h1, h2, h3, li')) {
+    const text = el.textContent.replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+    if (el.tagName !== 'LI') { cur = /^(download|دانلود)/i.test(text) ? null : { title: text, items: [] }; if (cur) sections.push(cur); }
+    else if (cur && !el.parentElement.closest('li')) cur.items.push(text);
+  }
+  const all = sections.filter((s) => s.items.length);
+  const mine = all.filter((s) => hasFa(s.title) === (I18N.lang === 'fa'));
+  return mine.length ? mine : all;
+}
+function updateStatusText() {
+  const U = state.update, v = (U.info && U.info.version) || '';
+  const p = U.progress;
+  switch (U.phase) {
+    case 'checking': return T('در حال بررسی…', 'Checking…');
+    case 'none': return T(`آخرین نسخه را دارید · بررسی ${fmtAgo(U.checkedAt)}`, `You are up to date · checked ${fmtAgo(U.checkedAt)}`);
+    case 'available': return T(`نسخه‌ی ${v} آماده‌ی دانلود است`, `Version ${v} is available`);
+    case 'downloading': return T('در حال دانلود ', 'Downloading ') + (p ? fmtNum(Math.floor(p.percent)) + (I18N.lang === 'fa' ? '٪' : '%') : '…');
+    case 'ready': return T(`نسخه‌ی ${v} دانلود شد؛ آماده‌ی نصب`, `Version ${v} is downloaded and ready to install`);
+    case 'error': return T('بررسی یا دانلود انجام نشد: ', 'Check or download failed: ') + (U.error || '');
+    case 'unsupported': return U.info && U.info.portable ? T('نسخه‌ی قابل‌حمل خودکار به‌روز نمی‌شود؛ نسخه‌ی جدید را از صفحه‌ی دانلود بگیرید.', 'The portable version does not update itself; get new versions from the download page.') : T('این نسخه به مخزن انتشار وصل نیست (نسخه‌ی محلی).', 'This build has no release feed (local build).');
+    default: return T('آپدیت‌ها از صفحه‌ی رسمی انتشار در گیت‌هاب دریافت و قبل از نصب بررسی می‌شوند.', 'Updates come from the official GitHub releases and are verified before install.');
+  }
+}
+function updateSettingsButton() {
+  const ph = state.update.phase;
+  if (ph === 'checking') return `<button class="btn ghost sm" disabled><span class="spin">${icon('refresh', 13)}</span>${T('در حال بررسی', 'Checking')}</button>`;
+  if (UPD_ACTIVE.includes(ph)) return `<button class="btn primary sm" data-act="upd-open">${icon(ph === 'ready' ? 'rocket' : 'download', 13)}${ph === 'ready' ? T('نصب', 'Install') : T('مشاهده', 'View')}</button>`;
+  if (ph === 'unsupported' && state.update.info && state.update.info.portable) return `<button class="btn ghost sm" data-act="upd-page">${icon('external', 13)}${T('صفحه‌ی دانلود', 'Download page')}</button>`;
+  return `<button class="btn ghost sm" data-act="upd-check">${icon('refresh', 13)}${T('بررسی', 'Check')}</button>`;
+}
+function updateProgressHtml() {
+  const U = state.update;
+  if (U.phase === 'ready') return `<div class="callout">${icon('checkCircle', 16)}<span>${T('دانلود و بررسی شد. با «راه‌اندازی مجدد و نصب»، برنامه بسته می‌شود، نسخه‌ی جدید نصب می‌شود و دوباره باز می‌شود. چند ثانیه بیشتر طول نمی‌کشد.', 'Downloaded and verified. “Restart & install” closes the app, installs the new version and opens it again — it only takes a few seconds.')}</span></div>`;
+  if (U.phase !== 'downloading') return '';
+  return `<div class="upd-prog"><div class="upd-prog-top"><b class="num" id="updPct">…</b><span class="muted num upd-stats" id="updTxt">${T('در حال اتصال…', 'Connecting…')}</span></div>
+    <div class="progress"><i id="updBar" style="width:2%"></i></div>
+    <div class="muted" style="font-size:11.5px;margin-top:8px">${T('می‌توانید این پنجره را ببندید؛ دانلود در پس‌زمینه ادامه پیدا می‌کند.', 'You can close this window; the download continues in the background.')}</div></div>`;
+}
+function updateModalHtml() {
+  const U = state.update, i = U.info || {}, ph = U.phase;
+  const portable = ph === 'unsupported' && i.portable;
+  const title = ph === 'ready' ? T('آماده‌ی نصب', 'Ready to install') : ph === 'downloading' ? T('در حال دانلود نسخه‌ی جدید', 'Downloading the new version') : ph === 'error' ? T('به‌روزرسانی انجام نشد', 'Update failed') : portable ? T('نسخه‌ی قابل‌حمل', 'Portable version') : T('نسخه‌ی جدید DriveHound', 'A new DriveHound is here');
+  const notes = updateNotes(i.notes);
+  const vers = i.version ? `<div class="upd-vers"><span class="tag num ltr">v${esc(i.current || state.version)}</span><span class="upd-arrow">${icon('chevronR', 14)}</span><span class="tag upd-new num ltr">v${esc(i.version)}</span>${i.date ? `<span class="muted">${esc(fmtDate(i.date))}</span>` : ''}</div>` : '';
+  const body = [
+    ph === 'error' ? `<div class="callout bad">${icon('xCircle', 16)}<span>${esc(U.error || '')}<br>${T('دوباره امتحان کنید یا نسخه‌ی جدید را از صفحه‌ی دانلود بگیرید.', 'Try again, or get the new version from the download page.')}</span></div>` : '',
+    portable ? `<div class="callout">${icon('info', 16)}<span>${esc(updateStatusText())}</span></div>` : '',
+    notes.length ? `<div class="upd-notes">${notes.map((s) => `<h4>${esc(s.title)}</h4><ul>${s.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`).join('')}</div>`
+      : !portable ? `<p class="muted" style="margin:0">${T('جزئیات تغییرات در صفحه‌ی انتشار در گیت‌هاب است.', 'See the release page on GitHub for details.')}</p>` : '',
+    `<div id="updProgBox">${updateProgressHtml()}</div>`,
+  ].join('');
+  const main = ph === 'ready' ? `<button class="btn primary" data-act="upd-install">${icon('rocket', 15)}${T('راه‌اندازی مجدد و نصب', 'Restart & install')}</button>`
+    : ph === 'downloading' ? `<button class="btn primary" disabled><span class="spin">${icon('refresh', 15)}</span>${T('در حال دانلود…', 'Downloading…')}</button>`
+    : portable ? `<button class="btn primary" data-act="upd-page">${icon('download', 15)}${T('صفحه‌ی دانلود', 'Download page')}</button>`
+    : `<button class="btn primary" data-act="upd-download">${icon(ph === 'error' ? 'refresh' : 'download', 15)}${ph === 'error' ? T('تلاش دوباره', 'Try again') : T('دانلود و نصب', 'Download & install')}</button>`;
+  return `<div class="modal-head upd-head"><div class="upd-badge">${icon(ph === 'ready' ? 'checkCircle' : ph === 'error' ? 'alert' : 'download', 24)}</div>
+      <div style="flex:1;min-width:0"><h3>${title}</h3>${vers}</div><button class="icon-btn" data-act="close-modal">${icon('x', 18)}</button></div>
+    <div class="modal-body">${body}</div>
+    <div class="modal-foot"><button class="btn ghost" data-act="close-modal">${ph === 'downloading' ? T('پنهان کردن', 'Hide') : T('بعداً', 'Later')}</button>
+      ${portable ? '' : `<button class="btn ghost" data-act="upd-page">${icon('external', 14)}${T('صفحه‌ی انتشار', 'Release page')}</button>`}${main}</div>`;
+}
+function updateModal() {
+  const m = modal(updateModalHtml(), true);
+  m.dataset.upd = '1';
+  updateProgressUi();
+}
+function renderUpdatePill() {
+  const pill = $('#updatePill'), U = state.update;
+  if (!pill) return;
+  pill.hidden = !UPD_ACTIVE.includes(U.phase);
+  if (pill.hidden) return;
+  const p = U.progress;
+  pill.className = 'update-pill' + (U.phase === 'ready' ? ' ready' : '');
+  pill.innerHTML = U.phase === 'downloading' ? `<span class="spin">${icon('refresh', 13)}</span><span class="num">${p ? fmtNum(Math.floor(p.percent)) + (I18N.lang === 'fa' ? '٪' : '%') : '…'}</span>`
+    : U.phase === 'ready' ? `${icon('rocket', 13)}${T('نصب نسخه‌ی جدید', 'Install update')}`
+    : `${icon('sparkles', 13)}${T('نسخه‌ی جدید', 'New version')} <bdi class="num ltr">${esc(U.info.version || '')}</bdi>`;
+}
+// light update on every progress tick: only the numbers, no re-render
+function updateProgressUi() {
+  const U = state.update, p = U.progress;
+  renderUpdatePill();
+  const st = $('#setUpdTxt'); if (st) st.textContent = updateStatusText();
+  if (U.phase !== 'downloading' || !p) return;
+  const pct = $('#updPct'), txt = $('#updTxt'), bar = $('#updBar');
+  if (pct) pct.textContent = fmtNum(Math.floor(p.percent)) + (I18N.lang === 'fa' ? '٪' : '%');
+  if (bar) bar.style.width = Math.max(2, p.percent) + '%';
+  if (txt) {
+    const sec = p.speed > 0 ? Math.ceil((p.total - p.transferred) / p.speed) : 0;
+    const left = !sec ? '' : sec < 60 ? T(`${fmtNum(sec)} ثانیه مانده`, `${sec}s left`) : T(`${fmtNum(Math.ceil(sec / 60))} دقیقه مانده`, `${Math.ceil(sec / 60)} min left`);
+    // separate items with their own direction, so RTL layout cannot reorder the numbers
+    txt.innerHTML = [`<span dir="ltr">${esc(fmtBytes(p.transferred, true))} / ${esc(fmtBytes(p.total, true))}</span>`, `<span dir="ltr">${esc(fmtBytes(p.speed, true))}/s</span>`, left && `<span>${esc(left)}</span>`].filter(Boolean).join('<i>·</i>');
+  }
+}
+function refreshUpdateUi() {
+  const m = $('.modal[data-upd]');
+  if (m) m.innerHTML = updateModalHtml();
+  if (state.view === 'settings') renderSettings();
+  updateProgressUi();
+}
+async function checkForUpdate(silent) {
+  const U = state.update;
+  if (U.phase === 'checking') return;
+  if (UPD_ACTIVE.includes(U.phase) && U.phase !== 'available') { if (!silent) updateModal(); return; }
+  U.phase = 'checking'; U.error = null;
+  refreshUpdateUi();
+  let r;
+  try { r = await api.update.check(); } catch (e) { r = { configured: true, error: errText(e) }; }
+  U.info = r; U.error = r.error || null; U.checkedAt = Date.now();
+  U.phase = !r.configured ? 'unsupported' : r.error ? 'error' : r.phase === 'ready' ? 'ready' : r.phase === 'downloading' ? 'downloading' : r.available ? 'available' : 'none';
+  if (silent && U.phase === 'error') U.phase = 'idle';   // a background check fails quietly (offline…)
+  refreshUpdateUi();
+  if (silent) { if (U.phase === 'available') toast(T(`نسخه‌ی ${r.version} منتشر شد — روی دکمه‌ی بالای پنجره بزنید`, `Version ${r.version} is out — use the button at the top`), 'info', 7000); return; }
+  if (U.phase === 'none') toast(T('آخرین نسخه را دارید', 'You are up to date') + ` · v${esc(r.current || state.version)}`, 'ok', 3500);
+  else if (U.phase === 'unsupported' && !r.portable) toast(esc(updateStatusText()), 'info', 5000);
+  else updateModal();
+}
+async function startUpdateDownload() {
+  const U = state.update;
+  U.phase = 'downloading'; U.error = null; U.progress = null;
+  refreshUpdateUi();
+  try { await api.update.download(); U.phase = 'ready'; } catch (e) { U.phase = 'error'; U.error = errText(e); }
+  refreshUpdateUi();
+  if (U.phase === 'ready' && !$('.modal[data-upd]')) toast(T('نسخه‌ی جدید دانلود شد و آماده‌ی نصب است', 'The update is downloaded and ready to install'), 'ok', 6000);
+}
+async function installUpdateNow() {
+  if (!(await api.update.install())) { toast(T('فایل نصب آماده نیست؛ دوباره دانلود کنید', 'The installer is not ready; download it again'), 'err'); state.update.phase = 'available'; refreshUpdateUi(); return; }
+  closeModal();
+  opOverlay(T('در حال نصب نسخه‌ی جدید… برنامه چند ثانیه دیگر دوباره باز می‌شود', 'Installing the update… the app reopens in a few seconds')).update('', 1);
+}
+api.onUpdateProgress((p) => { const U = state.update; U.progress = p; if (U.phase !== 'downloading') { U.phase = 'downloading'; refreshUpdateUi(); } else updateProgressUi(); });
+api.onUpdateReady(() => { state.update.phase = 'ready'; refreshUpdateUi(); });
 
 Object.assign(VIEWS, { dupes: renderDupes, containers: renderContainers, system: renderSystem, move: renderMove, history: renderHistory, settings: renderSettings });
 Object.assign(RELOAD, {

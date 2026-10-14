@@ -5,7 +5,7 @@
    openDrawer, closeDrawer, findNodeChain, exportReport, saveSettings, analyze, updateProgress, selectedItems, cleanupGroups, $, $$,
    renderDupes, dupAct, dupBulk, loadContainers, renderContainers, loadSystem, renderSystem,
    moveFlow, compressFlow, loadMove, renderMove, loadHistory, renderHistory, renderSettings, renderExplorer, renderFiles, renderChanges, renderCleanup, renderApps,
-   refreshView, RELOAD, stale, debounce */
+   refreshView, RELOAD, stale, debounce, checkForUpdate, updateModal, startUpdateDownload, installUpdateNow */
 
 const settingSet = (path, value) => {
   const parts = path.split('.');
@@ -232,12 +232,12 @@ const ACTS = {
   'prot-add': async () => { const p = await api.pickFolder(); if (p) { state.settings.protectedPaths = (state.settings.protectedPaths || []).concat([p]); await saveSettings(); renderSettings(); } },
   'prot-del': async (el) => { state.settings.protectedPaths.splice(+el.dataset.i, 1); await saveSettings(); renderSettings(); },
   'hide-del': async (el) => { state.settings.hiddenPaths.splice(+el.dataset.i, 1); await saveSettings(); renderSettings(); },
-  'upd-check': async () => {
-    const r = await api.update.check();
-    state.settingsUi.update = r.portable ? T('نسخه قابل‌حمل خودکار به‌روز نمی‌شود؛ نسخه جدید را از صفحه Releases دانلود کنید.', 'The portable version does not update itself; download new versions from the Releases page.') : !r.configured ? T('مخزن انتشار برای این نسخه تنظیم نشده است (نسخه محلی).', 'No release feed is configured for this build (local build).') : r.error ? r.error : r.available ? T('نسخه جدید موجود است: ', 'Update available: ') + r.version : T('آخرین نسخه را دارید.', 'You are up to date.');
-    renderSettings();
-    if (r.available) { const m = modal(`<div class="modal-head">${icon('download', 20)}<h3>${esc(r.version)}</h3><button class="icon-btn" data-act="close-modal">${icon('x', 18)}</button></div><div class="modal-foot"><button class="btn ghost" data-act="close-modal">${t('cancel')}</button><button class="btn primary" id="updGo">${icon('download', 14)}${T('دانلود و نصب', 'Download & install')}</button></div>`); $('#updGo', m).addEventListener('click', () => api.update.install()); }
-  },
+  // updates
+  'upd-check': () => checkForUpdate(false),
+  'upd-open': () => updateModal(),
+  'upd-download': () => startUpdateDownload(),
+  'upd-install': () => installUpdateNow(),
+  'upd-page': () => api.update.openPage(),
 };
 
 // change events (selects)
@@ -279,6 +279,7 @@ $('#langToggle').addEventListener('click', async () => { state.settings.lang = s
 $('#themeToggle').addEventListener('click', async () => { state.settings.theme = state.settings.theme === 'dark' ? 'light' : 'dark'; await saveSettings(); applyTheme(); renderView(); });
 $('#adminPill').addEventListener('click', () => { if (!state.isAdmin) ACTS['relaunch-admin'](); });
 $('#refreshBtn').addEventListener('click', () => refreshView());
+$('#updatePill').addEventListener('click', () => updateModal());
 let resizeT = null;
 window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (['explorer', 'dashboard'].includes(state.view)) renderView(); }, 200); });
 
@@ -340,4 +341,7 @@ api.onAlert((ev) => { state.freeHist = null; if (ev.kind === 'growth') toast(T(`
   renderAll();
   booted = true;
   if (pendingAnalyze.length) analyzeTarget(pendingAnalyze.pop());
+  // quiet update check shortly after start, then every 6 hours (the app often lives in the tray)
+  setTimeout(() => checkForUpdate(true), 8000);
+  setInterval(() => checkForUpdate(true), 6 * 3600 * 1000);
 })().catch((e) => { document.body.insertAdjacentHTML('beforeend', `<div class="toast err" style="position:fixed;bottom:20px;left:20px">${esc(String(e && e.message || e))}</div>`); });

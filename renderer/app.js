@@ -1,5 +1,5 @@
 'use strict';
-/* global Knowledge, Compare, I18N, CAT_ICON, icon, Charts, Filters, api */
+/* global Knowledge, Compare, I18N, CAT_ICON, icon, Charts, Filters, api, renderUpdatePill */
 
 const K = window.Knowledge;
 const t = (k, v) => I18N.t(k, v);
@@ -262,6 +262,7 @@ function renderChrome() {
   pill.innerHTML = state.isAdmin ? `${icon('shieldCheck', 14)}${t('admin_yes')}` : `${icon('shield', 14)}${t('admin_no')} · <b>${t('admin_relaunch')}</b>`;
   pill.title = state.isAdmin ? '' : t('admin_hint');
   $('#refreshBtn').title = T('بازخوانی (F5)', 'Refresh (F5)');
+  renderUpdatePill();
   const d = state.drives.find((x) => x.letter === state.drive);
   const side = $('#sideDrive');
   if (d) {

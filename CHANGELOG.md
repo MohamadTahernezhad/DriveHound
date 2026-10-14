@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.1 — 2026-10-15
+
+### Added
+- **New update experience**: a quiet check shortly after start and every 6 hours, a titlebar button when a new version is out, and an update dialog with the version change, the release notes (in the app's language), a live progress bar (size, speed, time left) and "Restart & install", which installs silently and reopens the app. The download keeps going if the dialog is closed.
+
+### Fixed
+- **"Download & install" seemed to do nothing**: the download ran in the background with no progress and errors were ignored. Progress, errors, retry and a link to the download page are now shown.
+- Dropdown options were unreadable in the dark theme (light text on a white list).
+- The delete-method buttons in Settings wrapped onto two lines.
+
 ## 2.2.0 — 2026-10-14
 
 ### Added

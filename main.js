@@ -576,7 +576,9 @@ function registerIpc() {
     return SHELLMENU.install({ exe: process.env.PORTABLE_EXECUTABLE_FILE || process.execPath, appPath: DEV ? app.getAppPath() : null });
   });
   handle('update:check', [], checkUpdates);
+  handle('update:download', [], downloadUpdate);
   handle('update:install', [], installUpdate);
+  handle('update:openPage', [], () => shell.openExternal(RELEASES_URL).then(() => true));
 }
 
 // ───────────────────────── report ─────────────────────────
@@ -600,24 +602,57 @@ async function exportReport(data, format) {
 }
 
 // ───────────────────────── updates ─────────────────────────
+const RELEASES_URL = 'https://github.com/MohamadTahernezhad/DriveHound/releases/latest';
+let updater = null;
+let update = { phase: 'idle' };   // idle → downloading → ready; the download keeps running while the window is hidden
 function getUpdater() {
   if (DEV) return null;
   if (process.env.PORTABLE_EXECUTABLE_FILE) return null;                                     // portable exe: the updater would install a second, NSIS copy
   if (!fs.existsSync(path.join(process.resourcesPath, 'app-update.yml'))) return null;     // no publish target configured at build time
-  try { const u = require('electron-updater').autoUpdater; u.autoDownload = false; return u; } catch { return null; }
+  if (updater) return updater;
+  try {
+    const u = require('electron-updater').autoUpdater;
+    u.autoDownload = false;
+    u.on('download-progress', (p) => send('update:progress', { percent: p.percent, transferred: p.transferred, total: p.total, speed: p.bytesPerSecond }));
+    u.on('error', (e) => log('update error', e));
+    updater = u;
+    return u;
+  } catch (e) { log('updater unavailable', e); return null; }
 }
+const updErr = (e) => String((e && e.message) || e).split('\n')[0].slice(0, 300);
 async function checkUpdates() {
+  const base = { current: app.getVersion(), portable: !!process.env.PORTABLE_EXECUTABLE_FILE };
   const u = getUpdater();
-  if (!u) return { configured: false, portable: !!process.env.PORTABLE_EXECUTABLE_FILE };
-  try { const r = await u.checkForUpdates(); return { configured: true, available: !!(r && r.isUpdateAvailable), version: r && r.updateInfo && r.updateInfo.version }; }
-  catch (e) { return { configured: true, error: String(e.message || e).slice(0, 200) }; }
+  if (!u) return { ...base, configured: false };
+  if (update.phase !== 'idle') return { ...base, configured: true, available: true, ...update.info, phase: update.phase };
+  try {
+    const r = await u.checkForUpdates();
+    const i = (r && r.updateInfo) || {};
+    const notes = Array.isArray(i.releaseNotes) ? i.releaseNotes.map((n) => n.note || '').join('\n') : i.releaseNotes;
+    update.info = { version: i.version, date: i.releaseDate ? Date.parse(i.releaseDate) : null, notes: String(notes || '').slice(0, 100000) };
+    return { ...base, configured: true, available: !!(r && r.isUpdateAvailable), ...update.info, phase: update.phase };
+  } catch (e) { log('update check failed', e); return { ...base, configured: true, error: updErr(e) }; }
 }
-async function installUpdate() {
+// resolves when the installer is fully downloaded and verified; a second call joins the running download
+async function downloadUpdate() {
   const u = getUpdater();
-  if (!u) return false;
-  await u.downloadUpdate();
+  if (!u) throw new Error('not-configured');
+  if (update.phase === 'ready') return true;
+  if (update.phase !== 'downloading') {
+    if (!update.info) await u.checkForUpdates();
+    update.phase = 'downloading';
+    update.job = u.downloadUpdate().then(
+      () => { update.phase = 'ready'; send('update:ready', update.info); },
+      (e) => { update.phase = 'idle'; throw new Error(updErr(e)); });
+  }
+  await update.job;
+  return true;
+}
+function installUpdate() {
+  const u = getUpdater();
+  if (!u || update.phase !== 'ready') return false;
   quitting = true;
-  u.quitAndInstall();
+  setImmediate(() => u.quitAndInstall(true, true));   // silent install into the same folder, then start the new version
   return true;
 }
 
