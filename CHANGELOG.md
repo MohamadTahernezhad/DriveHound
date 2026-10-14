@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.0 — 2026-10-14
+
+### Added
+- **Refresh button and F5 / Ctrl+R**: reloads the current page — drives' free space, Docker/WSL, system tools, moves, history and installed programs are fetched again.
+- **Automatic refresh after every operation** (delete, system tools, Docker, move, quarantine, drivers…): the current page updates right away and other pages reload their data the next time they are opened.
+- Scan-based pages (dashboard, explorer, largest files, what changed, cleanup) and duplicate results drop files and folders that no longer exist on disk — whether removed by a tool, an action or another program.
+
+### Fixed
+- Pages kept showing old data after something was deleted or cleaned until the app was restarted or the drive was rescanned.
+
 ## 2.1.1 — 2026-10-13
 
 ### Fixed
