@@ -133,7 +133,8 @@ function buildGuard() {
   guard = { ...base, deleteReason: wrap(base.deleteReason), moveReason: wrap(base.moveReason), compressReason: wrap(base.compressReason) };
 }
 
-async function recordHistory(entry) { try { await history.add(entry); } catch (e) { console.error('history', e); } }
+// Every operation that changes the disk is logged here, so this is also where the UI learns its data may be stale.
+async function recordHistory(entry) { try { await history.add(entry); } catch (e) { console.error('history', e); } send('ops:changed', entry.op); }
 
 // ───────────────────────── scanning ─────────────────────────
 const targetKey = (root) => {
@@ -361,6 +362,8 @@ function registerIpc() {
     return res;
   });
   handle('fs:forbidden', [V.path()], (p) => guard.deleteReason(p));
+  // lstat only (no reads): an unreadable path still counts as existing
+  handle('fs:exists', [V.arr(V.path(), 5000)], (paths) => Promise.all(paths.map((p) => fsp.lstat(p).then(() => true, (e) => e.code !== 'ENOENT' && e.code !== 'ENOTDIR'))));
   handle('shell:reveal', [V.path()], (p) => { shell.showItemInFolder(p); return true; });
   // opens folders only — never launches files
   handle('shell:open', [V.path()], async (p) => {

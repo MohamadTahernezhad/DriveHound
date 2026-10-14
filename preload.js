@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('api', {
   sysContext: (force) => ipcRenderer.invoke('sys:context', !!force),
   delete: inv('fs:delete'),
   forbidden: inv('fs:forbidden'),
+  exists: inv('fs:exists'),
   reveal: inv('shell:reveal'),
   open: inv('shell:open'),
   copy: inv('clipboard:write'),
@@ -62,4 +63,5 @@ contextBridge.exposeInMainWorld('api', {
   onAnalyze: on('app:analyze'),
   onNav: on('app:nav'),
   onAlert: on('monitor:alert'),
+  onOpsChanged: on('ops:changed'),
 });

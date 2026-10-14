@@ -2,7 +2,7 @@
 /* Additional views: duplicates, Docker & WSL, system tools, move/compress, history & quarantine, settings */
 /* global state, api, K, Filters, icon, esc, t, T, P, fmtNum, fmtBytes, fmtBytesShort, fmtPct, fmtAgo, fmtDate, badge, reg, getItem,
    baseName, dirName, lowerP, extOf, ptail, countBy, topValues, safetyOptions, cls, modal, closeModal, toast, opOverlay, errText,
-   confirmDelete, runAction, saveSettings, renderView, VIEWS, $, $$, SAFETY_ICON, rootOf, isDeleted, GROUPS, groupOf */
+   confirmDelete, runAction, saveSettings, renderView, VIEWS, RELOAD, existsAll, $, $$, SAFETY_ICON, rootOf, isDeleted, GROUPS, groupOf */
 
 state.dupes = { result: null, running: false, progress: null, roots: [], minMB: 10, exclude: '', keep: new Map(), strategy: 'oldest', limit: 60 };
 state.containers = { tab: 'docker', docker: null, wsl: null, loading: false };
@@ -510,3 +510,19 @@ async function renderSettings() {
 }
 
 Object.assign(VIEWS, { dupes: renderDupes, containers: renderContainers, system: renderSystem, move: renderMove, history: renderHistory, settings: renderSettings });
+Object.assign(RELOAD, {
+  // duplicate results are a snapshot too: drop copies that no longer exist
+  dupes: async () => {
+    const S = state.dupes;
+    if (!S.result || S.running) return;
+    const files = S.result.groups.flatMap((g) => g.files);
+    const ok = await existsAll(files.map((f) => f.p));
+    const gone = new Set(files.filter((_, i) => !ok[i]).map((f) => f.p));
+    if (gone.size) for (const g of S.result.groups) g.files = g.files.filter((f) => !gone.has(f.p));
+  },
+  containers: () => { const S = state.containers; if (!S.loading) { S.docker = null; S.wsl = null; } },
+  system: () => { const S = state.system; if (!S.loading) { S.drivers = null; S.restore = null; S.compact = null; } },
+  move: () => { const S = state.moveView; if (!S.loading) S.status = null; },
+  history: () => { state.hist.list = null; },
+  settings: () => { state.settingsUi.ai = null; },
+});

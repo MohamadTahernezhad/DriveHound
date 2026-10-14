@@ -4,7 +4,8 @@
    confirmDelete, runAction, askAI, startScan, pickDrive, rememberTarget, setView, renderView, renderAll, renderChrome, applyLang, applyTheme,
    openDrawer, closeDrawer, findNodeChain, exportReport, saveSettings, analyze, updateProgress, selectedItems, cleanupGroups, $, $$,
    renderDupes, dupAct, dupBulk, loadContainers, renderContainers, loadSystem, renderSystem,
-   moveFlow, compressFlow, loadMove, renderMove, loadHistory, renderHistory, renderSettings, renderExplorer, renderFiles, renderChanges, renderCleanup, renderApps */
+   moveFlow, compressFlow, loadMove, renderMove, loadHistory, renderHistory, renderSettings, renderExplorer, renderFiles, renderChanges, renderCleanup, renderApps,
+   refreshView, RELOAD, stale, debounce */
 
 const settingSet = (path, value) => {
   const parts = path.split('.');
@@ -267,6 +268,7 @@ document.addEventListener('dblclick', (e) => {
   if (it && it.isDir && it.node) { state.explorer.stack.push(it.node); closeDrawer(); renderExplorer(); }
 });
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r')) { e.preventDefault(); if ($('#modalRoot').hidden) refreshView(); return; }
   if (Filters.onKey(e)) return;
   if (e.key === 'Escape') { if (!$('#modalRoot').hidden) closeModal(); else closeDrawer(); }
   if (e.key === 'Backspace' && state.view === 'explorer' && !/input|select|textarea/i.test(document.activeElement.tagName)) ACTS.up();
@@ -276,6 +278,7 @@ $$('.nav-item, #settingsBtn').forEach((n) => n.addEventListener('click', () => s
 $('#langToggle').addEventListener('click', async () => { state.settings.lang = state.settings.lang === 'fa' ? 'en' : 'fa'; await saveSettings(); renderAll(); if (state.drawerItem) openDrawer(state.drawerItem); });
 $('#themeToggle').addEventListener('click', async () => { state.settings.theme = state.settings.theme === 'dark' ? 'light' : 'dark'; await saveSettings(); applyTheme(); renderView(); });
 $('#adminPill').addEventListener('click', () => { if (!state.isAdmin) ACTS['relaunch-admin'](); });
+$('#refreshBtn').addEventListener('click', () => refreshView());
 let resizeT = null;
 window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (['explorer', 'dashboard'].includes(state.view)) renderView(); }, 200); });
 
@@ -311,6 +314,13 @@ const pendingAnalyze = [];
 function analyzeTarget(p) { rememberTarget(p); startScan(/^[a-zA-Z]:\\?$/.test(p) ? p.slice(0, 2) : p); }
 api.onAnalyze((p) => { if (!p) return; if (booted) analyzeTarget(p); else pendingAnalyze.push(p); });
 api.onNav((n) => { if (n.view === 'changes') state.changes.tab = 'compare'; setView(n.view); });
+// an operation changed the disk (delete, tool, Docker, move…): mark cached views stale and refresh the current one
+const refreshSoon = debounce(() => { if (booted) refreshView(true); }, 400);
+api.onOpsChanged((op) => {
+  for (const v of Object.keys(RELOAD)) if (v !== 'apps' || op === 'uninstall') stale.add(v);
+  stale.delete('settings');
+  refreshSoon();
+});
 api.onAlert((ev) => { state.freeHist = null; if (ev.kind === 'growth') toast(T(`درایو ${ev.drive} ناگهان ${fmtBytes(ev.drop)} پر شد`, `Drive ${ev.drive} suddenly lost ${fmtBytes(ev.drop)}`), 'info', 9000); });
 
 // ───────── boot ─────────

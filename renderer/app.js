@@ -261,6 +261,7 @@ function renderChrome() {
   pill.className = 'admin-pill' + (state.isAdmin ? ' on' : '');
   pill.innerHTML = state.isAdmin ? `${icon('shieldCheck', 14)}${t('admin_yes')}` : `${icon('shield', 14)}${t('admin_no')} · <b>${t('admin_relaunch')}</b>`;
   pill.title = state.isAdmin ? '' : t('admin_hint');
+  $('#refreshBtn').title = T('بازخوانی (F5)', 'Refresh (F5)');
   const d = state.drives.find((x) => x.letter === state.drive);
   const side = $('#sideDrive');
   if (d) {
@@ -284,9 +285,11 @@ const VIEWS = {};
 function setView(v) {
   if (!VIEWS[v]) v = 'dashboard';
   state.view = v;
+  const reloading = dropStale(v);
   $$('.view').forEach((el) => { el.classList.toggle('active', el.id === 'view-' + v); if (el.id === 'view-' + v) el.scrollTop = 0; });
   renderChrome();
   renderView(v);
+  if (reloading) reloading.then(() => { if (state.view === v) renderView(v); }).catch(() => {});
 }
 function renderView(v = state.view) {
   const el = $('#view-' + v);
@@ -295,6 +298,75 @@ function renderView(v = state.view) {
   if (r && r.then) r.then(() => { if (el) el.scrollTop = top; }); else if (el) el.scrollTop = top;
 }
 function renderAll() { applyLang(); renderChrome(); renderView(); }
+
+// ───────────────────────── refresh (button / F5) ─────────────────────────
+// Views that keep data loaded from the core register a function that drops it, so their next render loads it again.
+// It may return a promise when the reload itself is async (the view is rendered again when it settles).
+const RELOAD = {};
+const stale = new Set();   // views whose data an operation may have changed; reloaded when next opened
+function dropStale(v) {
+  if (!stale.delete(v) || !RELOAD[v]) return null;
+  const r = RELOAD[v]();
+  return r && r.then ? r : null;
+}
+async function existsAll(paths) {
+  const out = [];
+  for (let i = 0; i < paths.length; i += 5000) out.push(...await api.exists(paths.slice(i, i + 5000)));
+  return out;
+}
+// The scan is a snapshot: drop what it lists that is gone from disk (removed by a tool, an action or another program).
+async function pruneMissing() {
+  const r = state.result, d = state.derived;
+  if (!r || !d || state.scanning) return 0;
+  const seen = new Map();
+  const add = (p, size) => { const k = lowerP(p); if (!seen.has(k) && !isDeleted(p)) seen.set(k, { p, size }); };
+  const st = state.explorer.stack;
+  if (st.length) { const node = st[st.length - 1], base = nodePath(st); for (const c of node.c) add(joinPath(base, c.n), c.s); for (const f of node.fl) add(joinPath(base, f.n), f.s); }
+  for (const c of r.tree.c) add(joinPath(r.tree.n, c.n), c.s);
+  for (const i of d.items) add(i.path, i.size);
+  for (const h of r.hotspots) add(h.p, h.s);
+  for (const f of r.topFiles) add(f.p, f.s);
+  for (const f of r.recentFiles) add(f.p, f.s);
+  const list = [...seen.values()];
+  const ok = await existsAll(list.map((x) => x.p));
+  if (state.result !== r) return 0;   // a new scan arrived meanwhile
+  const gone = list.filter((_, i) => !ok[i]).sort((a, b) => a.p.length - b.p.length);
+  for (const g of gone) {
+    if (isDeleted(g.p)) continue;   // its parent is already gone
+    state.deleted.add(lowerP(g.p));
+    removeFromTree(g.p, g.size || 0, true);
+  }
+  if (!gone.length) return 0;
+  for (let i = 1; i < st.length; i++) if (isDeleted(nodePath(st.slice(0, i + 1)))) { state.explorer.stack = st.slice(0, i); break; }
+  recomputeReclaim();
+  return gone.length;
+}
+// quiet = triggered by an operation: only views marked stale reload their data
+let refreshing = null;
+function refreshView(quiet) {
+  if (refreshing) return quiet ? refreshing : refreshing.then(() => refreshView(false));
+  const btn = $('#refreshBtn');
+  btn.classList.add('spinning');
+  refreshing = (async () => {
+    try {
+      const v = state.view;
+      const drives = api.drives();   // PowerShell, slow: runs alongside the rest
+      if (!quiet) stale.add(v);
+      const dropped = stale.has(v) && !!RELOAD[v];
+      const pending = dropStale(v);
+      renderView();                  // a dropped cache starts loading now
+      const [gone] = await Promise.all([pruneMissing(), pending]);
+      state.drives = await drives;
+      state.freeHist = null;
+      renderChrome();
+      if (!dropped || pending || gone) renderView();
+      if (state.drawerItem && $('#modalRoot').hidden) { if (isDeleted(state.drawerItem.path)) closeDrawer(); else openDrawer(state.drawerItem); }
+      if (!quiet) toast(T('به‌روز شد', 'Refreshed'), 'info', 1400);
+    } catch (e) { if (!quiet) toast(errText(e), 'err'); }
+    finally { btn.classList.remove('spinning'); refreshing = null; }
+  })();
+  return refreshing;
+}
 
 // ───────────────────────── dashboard ─────────────────────────
 function driveCards() {
@@ -736,7 +808,8 @@ async function renderApps() {
   if (!A.list && !A.loading) {
     A.loading = true;
     el.innerHTML = `<div class="page-head"><div><h1>${t('apps_title')}</h1><p>${t('apps_sub')}</p></div></div><div class="card">${'<div class="skeleton"></div>'.repeat(8)}</div>`;
-    const ctx = await api.sysContext();
+    const force = A.force; A.force = false;
+    const ctx = await api.sysContext(force);
     A.list = ctx.apps; A.loading = false;
     if (state.view === 'apps') renderApps();
     return;
@@ -969,7 +1042,7 @@ async function afterDelete(items, res, mode) {
       if (r.quarantined) quarantined = true;
       if (it) {
         if (it.contents) contentsCleared(it.path, r.freed || 0);
-        else { state.deleted.add(lowerP(it.path)); removeFromTree(it.path, r.trashed ? (it.size || 0) : (r.failed ? r.freed : (it.size || 0)), !r.failed); }
+        else if (!isDeleted(it.path)) { state.deleted.add(lowerP(it.path)); removeFromTree(it.path, r.trashed ? (it.size || 0) : (r.failed ? r.freed : (it.size || 0)), !r.failed); }
         state.cleanup.selected.delete(it.path);
       }
     } else failed++;
@@ -1199,3 +1272,8 @@ async function exportReport(format) {
 
 // ───────────────────────── view registry ─────────────────────────
 Object.assign(VIEWS, { dashboard: renderDashboard, explorer: renderExplorer, files: renderFiles, changes: renderChanges, cleanup: renderCleanup, apps: renderApps });
+// scan-based views are refreshed by pruneMissing(); the comparison also re-reads its snapshot
+Object.assign(RELOAD, {
+  changes: () => { state.changes.snap = null; },
+  apps: () => { if (!state.apps.loading) { state.apps.list = null; state.apps.force = true; } },
+});

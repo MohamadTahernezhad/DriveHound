@@ -76,6 +76,17 @@
     ok('view renders: ' + v, el && el.classList.contains('active') && el.innerHTML.length > 100 && errors.length === n, errors.slice(n).join(' | '));
   }
 
+  // ── refresh (button / F5) ──
+  ok('refresh: button in the titlebar', !!document.querySelector('#refreshBtn'));
+  ok('core: exists reports missing paths', JSON.stringify(await window.api.exists(['C:\\Windows', 'C:\\__dh_missing__\\x'])) === '[true,false]');
+  setView('history');
+  await sleep(1500);
+  const fakeList = [];
+  state.hist.list = fakeList;
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }));
+  await sleep(1500);
+  ok('refresh: F5 reloads the current view', Array.isArray(state.hist.list) && state.hist.list !== fakeList);
+
   // ── filters ──
   if (state.result) {
     setView('files');
@@ -84,13 +95,13 @@
     const input = document.querySelector('#fq-files');
     input.value = 'ext:vhdx'; input.dispatchEvent(new Event('input', { bubbles: true }));
     await sleep(600);
-    const expected = state.result.topFiles.filter((f) => /\.vhdx$/i.test(f.p)).length;
+    const expected = state.result.topFiles.filter((f) => /\.vhdx$/i.test(f.p) && !isDeleted(f.p)).length;
     const shown = document.querySelectorAll('#view-files .row').length;
     ok('filters: ext:vhdx query', shown === Math.min(expected, 150), `shown ${shown} expected ${expected}`);
     const input2 = document.querySelector('#fq-files');
     input2.value = '>1gb -docker'; input2.dispatchEvent(new Event('input', { bubbles: true }));
     await sleep(600);
-    const exp2 = state.result.topFiles.filter((f) => f.s > 1024 ** 3 && !f.p.toLowerCase().includes('docker')).length;
+    const exp2 = state.result.topFiles.filter((f) => f.s > 1024 ** 3 && !f.p.toLowerCase().includes('docker') && !isDeleted(f.p)).length;
     ok('filters: size + exclusion query', document.querySelectorAll('#view-files .row').length === Math.min(exp2, 150), 'expected ' + exp2);
     document.querySelector('[data-act="f-clear"][data-fk="files"]').click();
     await sleep(300);
