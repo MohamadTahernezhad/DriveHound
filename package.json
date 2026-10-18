@@ -83,7 +83,7 @@
     "vazirmatn": "^33.0.3"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.131.0",
+    "@anthropic-ai/sdk": "^0.134.0",
     "electron-updater": "^6.8.9"
   },
   "keywords": [
