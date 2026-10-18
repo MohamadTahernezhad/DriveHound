@@ -161,3 +161,7 @@ html[dir='rtl'] .upd-arrow svg { transform: scaleX(-1); }
 #updProgBox .callout { margin: 16px 0 0; }
 .upd-stats { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12.5px; }
 .upd-stats > i { font-style: normal; opacity: 0.6; }
+
+/* explorer: ⓘ details button on folder rows (a click on the row opens the folder) */
+.row-info { flex: none; margin-inline-start: auto; opacity: 0.55; }
+.row:hover .row-info, .row-info:focus-visible { opacity: 1; }

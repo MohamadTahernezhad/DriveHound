@@ -566,8 +566,13 @@ async function renderExplorer() {
   const cand = K.markerCandidates(kidsAll.filter((k) => k.isDir).map((k) => k.path));
   if (cand.length) { api.checkMarkers(cand).then((m) => { K.setMarkers(m); clsCache = new Map(); if (state.view === 'explorer') renderExplorer(); }); }
   const F = explorerFilter(kidsAll);
-  const kids = F.apply(kidsAll);
-  if (node.o && kids.length === kidsAll.length) kids.push({ other: true, size: node.o.s, count: node.o.k, files: node.o.f });
+  state.explorer.F = F;
+  // a search looks through every subfolder, not just this one
+  const deep = !!F.state.q.trim();
+  const found = deep ? F.apply(subtreeItems(node, path)) : null;
+  const kids = deep ? found.slice(0, 500) : F.apply(kidsAll);
+  if (!deep && node.o && kids.length === kidsAll.length) kids.push({ other: true, size: node.o.s, count: node.o.k, files: node.o.f });
+  const tmKids = deep ? kidsAll : kids;
 
   const crumbs = stack.map((n, i) => `${i ? `<span class="crumb-sep">${icon('chevronR', 14)}</span>` : ''}<button class="crumb ${i === stack.length - 1 ? 'last' : ''}" data-act="crumb" data-i="${i}">${esc(n.n)}</button>`).join('');
   el.innerHTML = `<div class="page-head"><div><h1>${t('nav_explorer')}</h1></div>
@@ -577,27 +582,55 @@ async function renderExplorer() {
       <span class="muted num" style="margin-inline-start:auto;font-size:12.5px">${fmtBytes(node.s)} · ${fmtNum(node.f)} ${t('files')}</span></div>
     <div class="explorer-grid">
       <div class="card" style="padding:10px"><div class="treemap" id="treemap"></div></div>
-      <div class="card" style="padding:12px 12px 8px">${F.bar({ count: fmtNum(kids.filter((k) => !k.other).length) + ' / ' + fmtNum(kidsAll.length) })}
+      <div class="card" style="padding:12px 12px 8px">${F.bar({ count: deep ? T(`${fmtNum(found.length)} نتیجه در همه‌ی زیرپوشه‌ها`, `${fmtNum(found.length)} results in all subfolders`) + (found.length > kids.length ? T(` · ${fmtNum(kids.length)} مورد اول`, ` · first ${fmtNum(kids.length)}`) : '') : fmtNum(kids.filter((k) => !k.other).length) + ' / ' + fmtNum(kidsAll.length) })}
         <div class="list" style="--cols: minmax(0,1fr) 110px 150px 90px 120px 130px">
           ${F.head([{ label: t('col_name'), sk: 'name' }, { label: t('col_size'), sk: 'size' }, { label: t('col_share') }, { label: t('col_items'), sk: 'files' }, { label: t('col_modified'), sk: 'mtime' }, { label: t('col_status') }])}
-          ${kids.map((k) => explorerRow(k, node.s)).join('') || `<div class="empty">${t('no_results')}</div>`}
+          ${kids.map((k) => explorerRow(k, node.s, deep)).join('') || `<div class="empty">${t('no_results')}</div>`}
         </div></div></div>`;
-  const tmItems = kids.map((k) => ({ ...k, value: k.size, label: esc(k.other ? t('other_items', { n: fmtNum(k.count) }) : k.name), sub: fmtBytes(k.size, true), color: colorFor(k) }));
+  const tmItems = tmKids.map((k) => ({ ...k, value: k.size, label: esc(k.other ? t('other_items', { n: fmtNum(k.count) }) : k.name), sub: fmtBytes(k.size, true), color: colorFor(k) }));
   requestAnimationFrame(() => { const tm = $('#treemap'); if (!tm) return; Charts.treemap(tm, tmItems.slice().sort((a, b) => b.value - a.value), {
     rtl: I18N.lang === 'fa',
-    onClick: (it) => { if (!it.other) openDrawer(it); },
-    onDblClick: (it) => { if (it.isDir && it.node) { state.explorer.stack.push(it.node); renderExplorer(); } },
+    onClick: (it, e) => { if (it.other || (e && e.detail > 1)) return; if (it.isDir && it.node) drillInto(it); else openDrawer(it); },
     tooltip: (e, it) => showTip(e, it && (it.other ? `<b>${t('other_items', { n: fmtNum(it.count) })}</b>${fmtBytes(it.size)}` :
       `<b>${esc(it.name)}</b>${fmtBytes(it.size)} · ${esc(P(cls(it.path, it.isDir).t))}<div style="margin-top:4px">${badge(cls(it.path, it.isDir).safety)}</div>`)),
   }); });
 }
-function explorerRow(k, total) {
+// every folder and kept file below a folder (the scan keeps items of 2 MB and more)
+function subtreeItems(node, path) {
+  const out = [], seen = new Set();
+  const stack = [[node, path]];
+  while (stack.length) {
+    const [n, p] = stack.pop();
+    for (const ch of n.c) {
+      const cp = joinPath(p, ch.n);
+      if (isDeleted(cp)) continue;
+      out.push({ name: ch.n, path: cp, size: ch.s, isDir: true, node: ch, mtime: ch.m, files: ch.f, r30: ch.r30, r7: ch.r7 });
+      stack.push([ch, cp]);
+    }
+    for (const f of n.fl) { const fp = joinPath(p, f.n); if (!isDeleted(fp)) { out.push({ name: f.n, path: fp, size: f.s, isDir: false, mtime: f.m }); seen.add(lowerP(fp)); } }
+  }
+  const base = lowerP(path) + '\\';
+  for (const f of state.result.topFiles) { const lp = lowerP(f.p); if (lp.startsWith(base) && !seen.has(lp) && !isDeleted(f.p)) out.push({ name: baseName(f.p), path: f.p, size: f.s, isDir: false, mtime: f.m }); }
+  return out;
+}
+function drillInto(it) {
+  const chain = findNodeChain(it.path);
+  if (!chain) { openDrawer(it); return; }
+  const F = state.explorer.F;
+  if (F && F.state.q) F.state.q = '';   // opening a search result shows that folder, not the search
+  state.explorer.stack = chain;
+  closeDrawer();
+  if (state.view !== 'explorer') setView('explorer'); else { renderExplorer(); $('#view-explorer').scrollTop = 0; }
+}
+function explorerRow(k, total, deep) {
   if (k.other) return `<div class="row row-other"><div class="row-name"><span class="fi" style="--c:var(--c-other)">${icon('layers', 16)}</span><span class="nm"><b>${t('other_items', { n: fmtNum(k.count) })}</b></span></div><span class="sz">${fmtBytes(k.size)}</span><div class="share"><div class="bar"><i style="width:${(k.size / total) * 100}%"></i></div></div><span class="num muted">${fmtNum(k.files || 0)}</span><span></span><span></span></div>`;
   const c = cls(k.path, k.isDir);
   const id = reg(k);
   const sel = state.drawerItem && state.drawerItem.path === k.path;
-  return `<div class="row ${sel ? 'sel' : ''}" data-act="open" data-dbl="drill" data-id="${id}">
-    <div class="row-name"><span class="fi" style="--c:${colorFor(k)}">${icon(fileIcon(k, c), 17)}</span><span class="nm"><b>${esc(k.name)}</b><span class="sub">${esc(P(c.t))}</span></span></div>
+  const drill = k.isDir && k.node;   // a click opens the folder; ⓘ shows its details
+  return `<div class="row ${sel ? 'sel' : ''}" data-act="${drill ? 'drill' : 'open'}" data-id="${id}">
+    <div class="row-name"><span class="fi" style="--c:${colorFor(k)}">${icon(fileIcon(k, c), 17)}</span><span class="nm"><b>${esc(k.name)}</b>${deep ? ptail(dirName(k.path)) : `<span class="sub">${esc(P(c.t))}</span>`}</span>
+      ${drill ? `<button class="icon-btn xs row-info" data-act="open" data-id="${id}" title="${esc(T('جزئیات و بررسی وابستگی', 'Details & dependency check'))}">${icon('info', 15)}</button>` : ''}</div>
     <span class="sz">${fmtBytes(k.size)}</span>
     <div class="share"><div class="bar"><i style="width:${total ? (k.size / total) * 100 : 0}%"></i></div><span class="num">${fmtPct(total ? k.size / total : 0)}</span></div>
     <span class="num muted">${k.isDir ? fmtNum(k.files) : '—'}</span>

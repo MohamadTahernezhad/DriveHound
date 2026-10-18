@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.2.2 — 2026-10-18
+
+### Changed
+- **Explorer: one click opens a folder** (list and treemap). Folder details moved to the ⓘ button on each row; a click on a file still shows its details.
+- **Explorer search covers every subfolder**: results come instantly from the scan in memory, show their path, and a click on a folder result opens it. The scan keeps items of 2 MB and more, so smaller files are not searched.
+
+### Fixed
+- The details panel now closes on a click anywhere outside it.
+
 ## 2.2.1 — 2026-10-15
 
 ### Added

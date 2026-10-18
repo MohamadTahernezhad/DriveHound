@@ -98,7 +98,7 @@ const Charts = (() => {
   }
 
   // Render treemap into el. items: [{value, label, sub, color, key}]
-  function treemap(el, items, { onClick, onDblClick, tooltip, rtl } = {}) {
+  function treemap(el, items, { onClick, tooltip, rtl } = {}) {
     const w = el.clientWidth, h = el.clientHeight;
     const rects = squarify(items.slice(0, 160), 0, 0, w, h);
     el.innerHTML = rects.map((r, i) => {
@@ -109,8 +109,7 @@ const Charts = (() => {
     }).join('');
     el.querySelectorAll('.tm-cell').forEach((c) => {
       const it = rects[+c.dataset.i];
-      c.addEventListener('click', () => onClick && onClick(it));
-      c.addEventListener('dblclick', () => onDblClick && onDblClick(it));
+      c.addEventListener('click', (e) => onClick && onClick(it, e));
       c.addEventListener('mousemove', (e) => tooltip && tooltip(e, it));
       c.addEventListener('mouseleave', () => tooltip && tooltip(null));
     });

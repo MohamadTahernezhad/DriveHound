@@ -87,6 +87,31 @@
   await sleep(1500);
   ok('refresh: F5 reloads the current view', Array.isArray(state.hist.list) && state.hist.list !== fakeList);
 
+  // ── explorer: one click opens a folder, search covers every subfolder, outside click closes the panel ──
+  if (state.result) {
+    setView('explorer'); state.explorer.stack = [state.result.tree]; renderExplorer();
+    await sleep(500);
+    const drillRow = document.querySelector('#view-explorer .row[data-act="drill"]');
+    if (drillRow) drillRow.click();
+    await sleep(400);
+    ok('explorer: one click opens a folder', !!drillRow && state.explorer.stack.length === 2);
+    state.explorer.stack = [state.result.tree]; renderExplorer();
+    let deepNode = state.result.tree;
+    for (let i = 0; i < 3 && deepNode.c.length; i++) deepNode = deepNode.c[0];
+    const eq = document.querySelector('#fq-explorer');
+    eq.value = deepNode.n; eq.dispatchEvent(new Event('input', { bubbles: true }));
+    await sleep(700);
+    ok('explorer: search finds items in subfolders', [...document.querySelectorAll('#view-explorer .row b')].some((b) => b.textContent === deepNode.n), deepNode.n);
+    document.querySelector('[data-act="f-clear"][data-fk="explorer"]').click();
+    await sleep(300);
+    document.querySelector('#view-explorer .row-info').click();
+    await sleep(300);
+    const drawerWasOpen = !!state.drawerItem;
+    document.querySelector('#view-explorer .page-head h1').click();
+    await sleep(300);
+    ok('drawer: closes on a click outside', drawerWasOpen && !state.drawerItem);
+  }
+
   // ── update dialog (simulated: dev builds have no release feed) ──
   state.update.info = { current: '2.1.1', version: '9.9.9', notes: '<h2>New</h2><ul><li>Faster scan <img src=x onerror="window.__xss3=1"></li></ul>', configured: true };
   state.update.phase = 'available';

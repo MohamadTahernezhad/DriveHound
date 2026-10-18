@@ -1,7 +1,7 @@
 {
   "name": "drivehound",
   "productName": "DriveHound",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Smart disk space analyzer for Windows — find what fills your drive and know what is safe to delete.",
   "main": "main.js",
   "author": "Mwhmad",

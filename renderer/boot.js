@@ -5,7 +5,7 @@
    openDrawer, closeDrawer, findNodeChain, exportReport, saveSettings, analyze, updateProgress, selectedItems, cleanupGroups, $, $$,
    renderDupes, dupAct, dupBulk, loadContainers, renderContainers, loadSystem, renderSystem,
    moveFlow, compressFlow, loadMove, renderMove, loadHistory, renderHistory, renderSettings, renderExplorer, renderFiles, renderChanges, renderCleanup, renderApps,
-   refreshView, RELOAD, stale, debounce, checkForUpdate, updateModal, startUpdateDownload, installUpdateNow */
+   refreshView, RELOAD, stale, debounce, drillInto, checkForUpdate, updateModal, startUpdateDownload, installUpdateNow */
 
 const settingSet = (path, value) => {
   const parts = path.split('.');
@@ -32,7 +32,9 @@ const ACTS = {
   colorby: (el) => { state.explorer.colorBy = el.dataset.m; renderExplorer(); },
   crumb: (el) => { state.explorer.stack = state.explorer.stack.slice(0, +el.dataset.i + 1); renderExplorer(); },
   up: () => { if (state.explorer.stack.length > 1) { state.explorer.stack.pop(); renderExplorer(); } },
-  'drill-to': (el) => { const it = getItem(el.dataset.id); const ch = findNodeChain(it.path); if (ch) { state.explorer.stack = ch; closeDrawer(); setView('explorer'); } },
+  'drill-to': (el) => drillInto(getItem(el.dataset.id)),
+  // e.detail > 1: the second click of a double-click must not open the next folder too
+  drill: (el, e) => { if (e.detail > 1) return; const it = getItem(el.dataset.id); if (it) drillInto(it); },
 
   // files / changes
   'export-files': async () => {
@@ -247,7 +249,10 @@ const CHANGE = {
   'set-num': async (el) => { settingSet(el.dataset.k, Number(el.value)); await saveSettings(); },
 };
 
+// a click anywhere outside the details panel closes it (except clicks that open another item, and dialogs it opened)
+const KEEPS_DRAWER = '#drawer, #modalRoot, .toasts, .op-overlay, #treemap, [data-act="open"], [data-act="drill"]';
 document.addEventListener('click', (e) => {
+  if (state.drawerItem && e.target.isConnected && !e.target.closest(KEEPS_DRAWER)) closeDrawer();
   if (Filters.onClick(e)) return;
   const el = e.target.closest('[data-act]');
   if (!el) return;
@@ -260,12 +265,6 @@ document.addEventListener('change', (e) => {
   const el = e.target;
   if (el.dataset && el.dataset.actChange && CHANGE[el.dataset.actChange]) CHANGE[el.dataset.actChange](el);
   if (el.id === 'dupStrategy') { state.dupes.strategy = el.value; state.dupes.keep = new Map(); renderDupes(); }
-});
-document.addEventListener('dblclick', (e) => {
-  const row = e.target.closest('.row[data-dbl="drill"]');
-  if (!row) return;
-  const it = getItem(row.dataset.id);
-  if (it && it.isDir && it.node) { state.explorer.stack.push(it.node); closeDrawer(); renderExplorer(); }
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r')) { e.preventDefault(); if ($('#modalRoot').hidden) refreshView(); return; }
